@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/coffee-leaves/
+*.db
+mlruns/
+mlartifacts/
+monitoring/report.html
+.DS_Store
