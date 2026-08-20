@@ -1,3 +1,7 @@
+# Usage: python src/train.py --data-dir data/coffee-leaves --epochs 10 --batch-size 32
+# Logs params/metrics/model artifacts to a local MLflow tracking server.
+# Run `mlflow ui` in another terminal to view the dashboard at http://127.0.0.1:5000
+
 import argparse
 import os
 
