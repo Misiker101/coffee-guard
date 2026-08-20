@@ -108,7 +108,9 @@ def main():
                 torch.save(model.state_dict(), args.out)
 
         mlflow.log_metric("best_val_acc", best_acc)
-        mlflow.pytorch.log_model(model, "model")
+        dummy_input = torch.randn(1, 3, 224, 224, device=device)
+        # Log the model with the required input example and updated parameter name
+        mlflow.pytorch.log_model(model, name="model", input_example=dummy_input)
         print(f"Best val acc: {best_acc:.4f}. Saved to {args.out}")
 
 
