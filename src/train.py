@@ -1,6 +1,13 @@
-# Usage: python src/train.py --data-dir data/coffee-leaves --epochs 10 --batch-size 32
-# Logs params/metrics/model artifacts to a local MLflow tracking server.
-# Run `mlflow ui` in another terminal to view the dashboard at http://127.0.0.1:5000
+"""
+Training script for CoffeeGuard.
+
+Usage:
+    python src/train.py --data-dir data/coffee-leaves --epochs 10 --batch-size 32
+
+Logs params/metrics/model artifacts to a local MLflow tracking server.
+Run `mlflow ui` in another terminal to view the dashboard at
+http://127.0.0.1:5000
+"""
 
 import argparse
 import os
@@ -108,9 +115,21 @@ def main():
                 torch.save(model.state_dict(), args.out)
 
         mlflow.log_metric("best_val_acc", best_acc)
-        dummy_input = torch.randn(1, 3, 224, 224, device=device)
-        # Log the model with the required input example and updated parameter name
-        mlflow.pytorch.log_model(model, name="model", input_example=dummy_input)
+
+        # A real example input, so MLflow can trace the forward pass
+        # (required for its default serialization mode as of newer
+        # mlflow/torch versions).
+        example_x, _ = next(iter(val_loader))
+        example_input = example_x[:1].cpu().numpy()
+
+        model.to("cpu")  # log a CPU copy so the artifact isn't tied to this GPU
+        mlflow.pytorch.log_model(
+            model,
+            name="model",
+            input_example=example_input,
+        )
+        model.to(device)
+
         print(f"Best val acc: {best_acc:.4f}. Saved to {args.out}")
 
 

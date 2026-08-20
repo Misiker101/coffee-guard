@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 
 import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from torchvision import transforms
 
@@ -24,6 +25,14 @@ from model import CLASS_NAMES, load_model_for_inference  # noqa: E402
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/coffeeguard.pt")
 DB_PATH = os.getenv("PRED_LOG_DB", "monitoring/predictions.db")
+
+CARE_TIPS = {
+    "Healthy": "No disease detected. Keep up regular monitoring and good field hygiene.",
+    "Miner": "Leaf miner detected. Remove and destroy affected leaves; consider approved biological or chemical control if infestation spreads.",
+    "Phoma": "Phoma leaf spot detected. Improve field drainage and air circulation; avoid overhead irrigation; consider a copper-based fungicide.",
+    "Red Spider Mite": "Red spider mite detected. Increase humidity around plants and consider miticide treatment if infestation is heavy.",
+    "Rust": "Coffee leaf rust detected. Prune for airflow, remove infected leaves, and consider a recommended fungicide program.",
+}
 
 _transform = transforms.Compose([
     transforms.Resize(256),
@@ -66,6 +75,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CoffeeGuard API", version="1.0.0", lifespan=lifespan)
 
+# Needed so a browser-based client (or Flutter web build) can call this API
+# from a different origin. Mobile (iOS/Android) builds aren't subject to
+# CORS, but this is harmless and keeps the API usable everywhere.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
 def health():
@@ -74,11 +93,11 @@ def health():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    if _model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded on server")
-
     if file.content_type not in ("image/jpeg", "image/png"):
         raise HTTPException(status_code=400, detail="Upload a JPEG or PNG image")
+
+    if _model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded on server")
 
     start = time.time()
     raw = await file.read()
@@ -101,9 +120,11 @@ async def predict(file: UploadFile = File(...)):
     conn.commit()
     conn.close()
 
+    predicted_class = CLASS_NAMES[pred_idx]
     return {
-        "predicted_class": CLASS_NAMES[pred_idx],
+        "predicted_class": predicted_class,
         "confidence": round(confidence, 4),
+        "care_tip": CARE_TIPS.get(predicted_class, ""),
         "latency_ms": round(latency_ms, 2),
         "all_probabilities": {c: round(float(p), 4) for c, p in zip(CLASS_NAMES, probs)},
     }
