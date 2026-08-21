@@ -55,29 +55,13 @@ jobs:
           push: true
           tags: ghcr.io/misiker101/coffeeguard:latest
 
-  deploy-to-hf-spaces:
+  deploy-to-render:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push to Hugging Face Spaces
+      - name: Trigger Render deploy
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          pip install huggingface_hub
-          python - <<'EOF'
-          import os
-          from huggingface_hub import HfApi
-
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          api.upload_folder(
-              folder_path=".",
-              repo_id="misiker/coffeeguard",
-              repo_type="space",
-              ignore_patterns=["data/*", ".git/*", "monitoring/*.db"],
-          )
-          EOF
+          curl -f -X POST "$RENDER_DEPLOY_HOOK_URL"

@@ -14,7 +14,7 @@ COPY app/ ./app/
 COPY src/ ./src/
 COPY models/ ./models/
 
-EXPOSE 7860
+EXPOSE 10000
 
-# Hugging Face Spaces expects the app to listen on port 7860 by default.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Render assigns a port dynamically via $PORT; default to 10000 for local runs.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
